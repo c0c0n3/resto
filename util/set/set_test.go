@@ -1,11 +1,11 @@
-package util
+package set
 
 import (
 	"testing"
 )
 
 func TestEmptySet(t *testing.T) {
-	empty := HashSetFrom[int]()
+	empty := From[int]()
 
 	if empty.Size() != 0 {
 		t.Errorf("want: 0; got: %d", empty.Size())
@@ -20,7 +20,7 @@ func TestEmptySet(t *testing.T) {
 }
 
 func TestRemoveDups(t *testing.T) {
-	set := HashSetFrom(1, 2, 2, 3, 4, 3)
+	set := From(1, 2, 2, 3, 4, 3)
 
 	if set.Size() != 4 {
 		t.Errorf("want: 4; got: %d", set.Size())

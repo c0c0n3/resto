@@ -1,4 +1,4 @@
-package util
+package set
 
 // Simple immutable set.
 type Set[T comparable] interface {
@@ -15,7 +15,7 @@ type hashSet[T comparable] struct {
 }
 
 // Create a map-backed Set from the given elements.
-func HashSetFromList[T comparable](vs []T) Set[T] {
+func FromList[T comparable](vs []T) Set[T] {
 	set := &hashSet[T]{
 		elements: make(map[T]struct{}, len(vs)),
 	}
@@ -26,8 +26,8 @@ func HashSetFromList[T comparable](vs []T) Set[T] {
 }
 
 // Create a map-backed Set from the given elements.
-func HashSetFrom[T comparable](vs ...T) Set[T] {
-	return HashSetFromList(vs)
+func From[T comparable](vs ...T) Set[T] {
+	return FromList(vs)
 }
 
 func (s *hashSet[T]) Member(v T) bool {
