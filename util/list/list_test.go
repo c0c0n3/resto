@@ -8,7 +8,9 @@ import (
 	"github.com/c0c0n3/resto/util/fnc"
 )
 
-func mapAsFold[X, Y any](f fnc.F[X, Y], xs []X) []Y {
+type IntList []int
+
+func mapAsFold[X, Y any, L ~[]X](f fnc.F[X, Y], xs L) []Y {
 	seed := make([]Y, 0, len(xs))
 	op := func(x X, ys []Y) []Y {
 		ys = append(ys, f(x))
@@ -28,6 +30,9 @@ var testMapFixtures = []struct {
 	{[]int{}, []string{}},
 	{[]int{1}, []string{"1"}},
 	{[]int{1, 2}, []string{"1", "2"}},
+	{IntList{}, []string{}},
+	{IntList{1}, []string{"1"}},
+	{IntList{1, 2}, []string{"1", "2"}},
 }
 
 func TestMap(t *testing.T) {
@@ -68,12 +73,40 @@ var testFilterFixtures = []struct {
 	{[]int{1, 2}, []int{2}},
 	{[]int{1, 2, 3}, []int{2}},
 	{[]int{1, 2, 3, 4}, []int{2, 4}},
+	{IntList{}, []int{}},
+	{IntList{1}, []int{}},
+	{IntList{1, 2}, []int{2}},
+	{IntList{1, 2, 3}, []int{2}},
+	{IntList{1, 2, 3, 4}, []int{2, 4}},
 }
 
 func TestFilter(t *testing.T) {
 	even := func(x int) bool { return x%2 == 0 }
 	for k, fixture := range testFilterFixtures {
 		got := Filter(even, fixture.input)
+		if !reflect.DeepEqual(fixture.want, got) {
+			t.Errorf("[%d] want: %v; got: %v", k, fixture.want, got)
+		}
+	}
+}
+
+var testReverseFixtures = []struct {
+	input []int
+	want  []int
+}{
+	{[]int{}, []int{}},
+	{[]int{1}, []int{1}},
+	{[]int{1, 2}, []int{2, 1}},
+	{[]int{1, 2, 3}, []int{3, 2, 1}},
+	{IntList{}, []int{}},
+	{IntList{1}, []int{1}},
+	{IntList{1, 2}, []int{2, 1}},
+	{IntList{1, 2, 3}, []int{3, 2, 1}},
+}
+
+func TestReverse(t *testing.T) {
+	for k, fixture := range testReverseFixtures {
+		got := Reverse(fixture.input)
 		if !reflect.DeepEqual(fixture.want, got) {
 			t.Errorf("[%d] want: %v; got: %v", k, fixture.want, got)
 		}

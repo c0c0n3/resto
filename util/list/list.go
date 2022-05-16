@@ -8,7 +8,7 @@ import (
 //
 //     Fold(op, y, [x1, x2, ...]) = op(...(op(x2, op(x1, y))...)
 //
-func Fold[X, Y any](op fnc.FoldOp[X, Y], seed Y, xs []X) Y {
+func Fold[X, Y any, L ~[]X](op fnc.FoldOp[X, Y], seed Y, xs L) Y {
 	result := seed
 	for _, x := range xs {
 		result = op(x, result)
@@ -20,7 +20,8 @@ func Fold[X, Y any](op fnc.FoldOp[X, Y], seed Y, xs []X) Y {
 //
 //     Map(f, [x1, x2, ...]) = [f(x1), f(x2), ...]
 //
-func Map[X, Y any](f fnc.F[X, Y], xs []X) []Y {
+// This operation doesn't modify the input list.
+func Map[X, Y any, L ~[]X](f fnc.F[X, Y], xs L) []Y {
 	ys := make([]Y, len(xs))
 	for k, x := range xs {
 		ys[k] = f(x)
@@ -49,17 +50,32 @@ func Map[X, Y any](f fnc.F[X, Y], xs []X) []Y {
 //     map f = foldr ((:) . f) []
 //
 
-// Keep only the list elements x such that p(x). In pseudo-code
+// Keep only the list elements x such that p(x). In pseudo-code:
 //
 //     Filter(p, [x1, x2, ...]) = [x2, ...]
 //
 // where p(x1) = false, p(x2) = true, etc.
-func Filter[X any](p fnc.Pred[X], xs []X) []X {
+// This operation doesn't modify the input list.
+func Filter[X any, L ~[]X](p fnc.Pred[X], xs L) []X {
 	ys := make([]X, 0, len(xs))
 	for _, x := range xs {
 		if p(x) {
 			ys = append(ys, x)
 		}
+	}
+	return ys
+}
+
+// Reverse the input list. In pseudo-code:
+//
+//     Reverse([x1, x2, ...]) = [..., x2, x1]
+//
+// This operation doesn't modify the input list.
+func Reverse[X any, L ~[]X](xs L) []X {
+	lx := len(xs)
+	ys := make([]X, lx)
+	for k, x := range xs {
+		ys[lx-k-1] = x
 	}
 	return ys
 }

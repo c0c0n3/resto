@@ -1,4 +1,4 @@
-package either
+package err
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func digitToString(x int) (string, error) {
 
 func TestBindERightValues(t *testing.T) {
 	e1 := FromResult(doubleOdd(3))
-	e2 := BindE(digitToString, e1)
+	e2 := Bind(digitToString, e1)
 	got := e2.Right()
 
 	if !e2.IsRight() {
@@ -34,7 +34,7 @@ func TestBindERightValues(t *testing.T) {
 
 func TestBindEPropagatesError(t *testing.T) {
 	e1 := FromResult(doubleOdd(2))
-	e2 := BindE(digitToString, e1)
+	e2 := Bind(digitToString, e1)
 
 	if e2.IsRight() {
 		t.Errorf("want: left; got: %v", e2)
@@ -46,7 +46,7 @@ func TestBindEPropagatesError(t *testing.T) {
 
 func TestWrapProcPropagatesError(t *testing.T) {
 	e1 := FromResult(doubleOdd(7))
-	e2 := BindE(digitToString, e1)
+	e2 := Bind(digitToString, e1)
 
 	if e2.IsRight() {
 		t.Errorf("want: left; got: %v", e2)
