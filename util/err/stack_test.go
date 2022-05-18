@@ -6,7 +6,7 @@ import (
 
 func TestErrStackFromMostToLeastRecent(t *testing.T) {
 	got := Stack().Push(Mk[Bad]("e1")).Push(Mk[Wrong]("e2")).Error()
-	want := "e2\ne1\n"
+	want := "err.Wrong: e2\nerr.Bad: e1\n"
 
 	if got != want {
 		t.Errorf("want: %s; got: %s", want, got)
@@ -22,7 +22,7 @@ func TestErrStackPushEmpty(t *testing.T) {
 
 func TestErrStackPushMany(t *testing.T) {
 	got := Stack().Push(Mk[Bad]("e1"), Mk[Wrong]("e2")).Error()
-	want := "e2\ne1\n"
+	want := "err.Wrong: e2\nerr.Bad: e1\n"
 
 	if got != want {
 		t.Errorf("want: %s; got: %s", want, got)

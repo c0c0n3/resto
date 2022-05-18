@@ -36,8 +36,8 @@ func whichErrorType(e error) string {
 }
 
 func TestErrMsg(t *testing.T) {
-	want := "something bad happened!"
-	bad := Mk[Bad](want)
+	want := "err.Bad: something bad happened!"
+	bad := Mk[Bad]("something bad happened!")
 
 	if got := fmt.Sprintf("%v", bad); got != want {
 		t.Errorf("want: %s; got: %s", want, got)
@@ -48,7 +48,7 @@ func TestErrMsg(t *testing.T) {
 }
 
 func TestErrMsgWithParams(t *testing.T) {
-	want := "was expecting 4 but got: 2"
+	want := "err.Wrong: was expecting 4 but got: 2"
 	wrong := Mk[Wrong]("was expecting 4 but got: %d", 2)
 
 	if got := fmt.Sprintf("%v", wrong); got != want {

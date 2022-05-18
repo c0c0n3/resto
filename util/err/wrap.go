@@ -11,8 +11,8 @@ import (
 //
 // Example.
 //
-//     TooBig string
-//     TooSmall string
+//     type TooBig string
+//     type TooSmall string
 //
 //     func checkBounds(x int) error {
 //         if x < 1 {
@@ -41,10 +41,28 @@ type Err[T ~string] struct {
 
 // Make a new error of type T where T is string-like.
 // The error message gets formatted according to the given specifier and
-// arguments as if you called Sprintf.
+// arguments as if you called Sprintf and prefixed with the error type.
+//
+// Example.
+//
+//     package bounds
+//
+//     type TooBig string
+//
+//     func check(x int) {
+//         if x > 10 {
+//             err := Mk[TooBig]("check: %d", x)
+//             fmt.Printf(err)
+//         }
+//     }
+//     // check(15) prints: "bounds.TooBig: check: 15"
+//
 func Mk[T ~string](format string, args ...any) Err[T] {
 	msg := fmt.Sprintf(format, args...)
-	return Err[T]{T(msg)}
+	var t T
+	taggedMsg := fmt.Sprintf("%T: %s", t, msg)
+
+	return Err[T]{T(taggedMsg)}
 }
 
 func (e Err[T]) Error() string {
