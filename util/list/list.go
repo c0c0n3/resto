@@ -79,3 +79,17 @@ func Reverse[X any, L ~[]X](xs L) []X {
 	}
 	return ys
 }
+
+// Get the first element of the input list if the list isn't empty,
+// otherwise return def if provided. If the list is empty and no def
+// was passed in, just return X's zero value.
+func Head[X any, L ~[]X](xs L, def ...X) X {
+	if len(xs) > 0 {
+		return xs[0]
+	}
+	if len(def) > 0 {
+		return def[0]
+	}
+	var zero X
+	return zero
+}

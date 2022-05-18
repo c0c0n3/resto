@@ -112,3 +112,31 @@ func TestReverse(t *testing.T) {
 		}
 	}
 }
+
+var testHeadFixtures = []struct {
+	input []int
+	want  int
+}{
+	{[]int{}, 0},
+	{[]int{1}, 1},
+	{[]int{1, 2}, 1},
+	{[]int{2, 1, 3}, 2},
+	{IntList{}, 0},
+	{IntList{1}, 1},
+	{IntList{1, 2}, 1},
+	{IntList{2, 1, 3}, 2},
+}
+
+func TestHead(t *testing.T) {
+	for k, fixture := range testHeadFixtures {
+		got := Head(fixture.input)
+		if got != fixture.want {
+			t.Errorf("[%d] want: %v; got: %v", k, fixture.want, got)
+		}
+	}
+
+	got := Head([]int{}, 5)
+	if got != 5 {
+		t.Errorf("want: 5; got: %d", got)
+	}
+}
