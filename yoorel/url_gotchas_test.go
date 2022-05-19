@@ -57,6 +57,7 @@ func TestUrlParseBareHostAndPort(t *testing.T) {
 }
 
 func TestUrlParseUntrimmedBareHostAndPort(t *testing.T) {
+	//lint:ignore SA1007 extra space is there for demo purposes.
 	parsed, err := url.Parse(" host:80 ")
 	if err == nil {
 		t.Errorf("want: error; got: %v", parsed)
@@ -72,7 +73,9 @@ func TestUrlParseUntrimmedBareHostAndPort(t *testing.T) {
 
 func TestUrlParseEncodedHost(t *testing.T) {
 	want := "http://x%20y"
+	//lint:ignore SA1007 URL escape is there for demo purposes.
 	_, err := url.Parse(want)
+
 	if err == nil {
 		t.Fatalf("want: parse error")
 		// err -> parse error: parse "http://x%20y": invalid URL escape "%20"
