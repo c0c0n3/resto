@@ -2,10 +2,31 @@ package yoorel
 
 import (
 	"net/url"
-	"strconv"
+	"path"
 
 	"github.com/c0c0n3/resto/util/set"
+	"github.com/c0c0n3/resto/util/str"
 )
+
+// Enumerates the URL schemes for a Web resource.
+type Scheme str.CaseInsensitive
+
+const (
+	Http  Scheme = "http"
+	Https Scheme = "https"
+)
+
+func (p Scheme) unwrap() str.CaseInsensitive {
+	return str.CaseInsensitive(p)
+}
+
+// Return the default port for the given scheme: 80 for HTTP, 443 for HTTPs.
+func DefaultPort(scheme Scheme) int {
+	if scheme.unwrap().Eq(Https) {
+		return DEFAULT_HTTPS_PORT
+	}
+	return DEFAULT_HTTP_PORT
+}
 
 // A valid reference to a Web resource, e.g. "http://some/api".
 // It's an absolute URI you can only get through a Builder.
@@ -31,34 +52,34 @@ type HttpUrl interface {
 }
 
 type httpUrl struct {
-	ref   *url.URL
-	query url.Values
+	scheme      Scheme
+	hostAndPort *HostAndPort
+	path        []string
+	query       url.Values
 }
 
 func (p httpUrl) Secure() bool {
-	return p.ref.Scheme == "https"
+	return p.scheme.unwrap().Eq(Https)
 }
 
 func (p httpUrl) Host() string {
-	return p.ref.Hostname()
+	return p.hostAndPort.Host()
 }
 
 func (p httpUrl) Port() int {
-	if port, err := strconv.Atoi(p.ref.Port()); err == nil {
-		return port
-	}
-	if p.Secure() {
-		return DEFAULT_HTTPS_PORT
-	}
-	return DEFAULT_HTTP_PORT
+	return p.hostAndPort.Port()
 }
 
 func (p httpUrl) Path() string {
-	if p.ref.Path == "" {
-		return "/"
-		// see comments in builderImpl.JoinPath
-	}
-	return p.ref.Path
+	rooted := append([]string{"/"}, p.path...) // (*)
+	return path.Join(rooted...)
+
+	// NOTE. Start and end slashes.
+	// We add a start slash since if it it wasn't there we've got to have
+	// it. If p.path already starts with a slash, path.Join will ignore
+	// it, so no harm done. But when it comes to end slashes, path.Join
+	// insists on removing them---e.g. /a/b/ becomes /a/b. Not sure if
+	// this is correct, but will keep it for now.
 }
 
 func (p httpUrl) QueryKeys() set.Set[string] {
@@ -80,8 +101,13 @@ func (p httpUrl) QueryValues(key string) []string {
 }
 
 func (p httpUrl) WireFormat() string {
-	p.ref.ForceQuery = false
-	refRepr := p.ref.String()
+	ref := url.URL{
+		Scheme:     string(p.scheme),
+		Host:       p.hostAndPort.String(),
+		Path:       p.Path(),
+		ForceQuery: false,
+	}
+	refRepr := ref.String()
 
 	if len(p.query) == 0 {
 		return refRepr
