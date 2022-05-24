@@ -23,6 +23,13 @@ func intToString(x int) string {
 	return fmt.Sprintf("%d", x)
 }
 
+func twiceWhenGt10(x int) []int {
+	if x > 10 {
+		return []int{x, x}
+	}
+	return []int{}
+}
+
 var testMapFixtures = []struct {
 	input []int
 	want  []string
@@ -38,6 +45,31 @@ var testMapFixtures = []struct {
 func TestMap(t *testing.T) {
 	for k, fixture := range testMapFixtures {
 		got := Map(intToString, fixture.input)
+		if !reflect.DeepEqual(fixture.want, got) {
+			t.Errorf("[%d] want: %v; got: %v", k, fixture.want, got)
+		}
+	}
+}
+
+var testConcatMapFixtures = []struct {
+	input []int
+	want  []int
+}{
+	{[]int{}, []int{}},
+	{[]int{1}, []int{}},
+	{[]int{1, 2}, []int{}},
+	{[]int{1, 20}, []int{20, 20}},
+	{[]int{11, 20}, []int{11, 11, 20, 20}},
+	{IntList{}, []int{}},
+	{IntList{1}, []int{}},
+	{IntList{1, 2}, []int{}},
+	{IntList{1, 20}, []int{20, 20}},
+	{IntList{11, 20}, []int{11, 11, 20, 20}},
+}
+
+func TestConcatMap(t *testing.T) {
+	for k, fixture := range testConcatMapFixtures {
+		got := ConcatMap(twiceWhenGt10, fixture.input)
 		if !reflect.DeepEqual(fixture.want, got) {
 			t.Errorf("[%d] want: %v; got: %v", k, fixture.want, got)
 		}

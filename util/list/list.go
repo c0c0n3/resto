@@ -29,6 +29,25 @@ func Map[X, Y any, L ~[]X](f fnc.F[X, Y], xs L) []Y {
 	return ys
 }
 
+// Apply f to each element of the list then join the result lists.
+// In pseudo-code:
+//
+//     ConcatMap(f, [x1, x2, ...]) = f(x1) <> f(x2) <> ...
+//
+// where (a <> b) appends b to a.
+//
+// This operation doesn't modify the input list.
+func ConcatMap[X, Y any, L ~[]X](f fnc.F[X, []Y], xs L) []Y {
+	ys := make([]Y, 0, len(xs)) // (*)
+	for _, x := range xs {
+		ys = append(ys, f(x)...)
+	}
+	return ys
+
+	// NOTE. Initial result capacity. Typically there will be at least
+	// len(xs) elements in ys, that is if for each x f(x) isn't empty.
+}
+
 // NOTE. Expressing list functions as folds.
 // Most list functions can be implemented as a fold---this has to do with
 // fold capturing the pattern of primitive recursion, but I'm digressing.
