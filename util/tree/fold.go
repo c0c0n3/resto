@@ -7,30 +7,8 @@ import (
 	"github.com/c0c0n3/resto/util/list"
 )
 
-// Does this node have any children?
-func IsLeaf[X any](t Tree[X]) bool {
-	if t == nil {
-		return true
-	}
-	return len(t.Children()) == 0
-}
-
-// Convenience function to get t.Label().
-func Label[X any](t Tree[X]) X {
-	var x X
-	if t != nil {
-		x = t.Label()
-	}
-	return x
-}
-
-// Convenience function to get t.Children().
-func Children[X any](t Tree[X]) []Tree[X] {
-	if t == nil {
-		return []Tree[X]{}
-	}
-	return t.Children()
-}
+// Tryna port Haskell's excellent Data.Tree over to Go, but I don't
+// think I'm happy w/ the result. I wish Go was more Haskell-like...
 
 // Traverse the tree in depth-first order, computing `op` at each step.
 // In pseudo-code:
@@ -105,10 +83,15 @@ func collectLevels[X any](levelMap map[int][]X, level int, ts ...Tree[X]) {
 // You could, but it's not worth my while in Go. See similar implementation
 // note about list functions as folds in the list package.
 
+// List the given tree labels in depth-first order.
 func ToList[X any](t Tree[X]) []X {
-	return nil // TODO
+	append := func(x X, xs []X) []X {
+		return append(xs, x)
+	}
+	return Fold(append, []X{}, t)
 }
 
+// List the given tree labels in breadth-first order.
 func ToBreadthList[X any](t Tree[X]) []X {
 	if t == nil {
 		return []X{}
