@@ -1,41 +1,61 @@
 package file
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
+// AbsPath represents an absolute path to a filesystem node.
 type AbsPath struct{ data string }
 
+// Get the string representation of this AbsPath. That's the canonical
+// string path Go's standard lib deals with---e.g. '/some/where'.
 func (d AbsPath) Value() string {
 	return d.data
 }
 
 func IsStringPath(value interface{}) error {
 	s, _ := value.(string)
-	_, err := ParseAbsPath(s)
+	_, err := NewAbsPathParser().Resolve(s)
 	return err
 }
 
-func ParseAbsPath(path string) (AbsPath, error) {
+// AbsPathResolver encapsulates the process of turning a, possibly relative,
+// string path into an AbsPath.
+type AbsPathResolver interface {
+	// Figure out what's the absolute path of the given string path.
+	Resolve(path string) (AbsPath, error)
+}
+
+type pathParser struct {
+	makeAbs func(path string) (string, error)
+}
+
+// Make an AbsPathParser.
+func NewAbsPathParser() AbsPathResolver {
+	return &pathParser{
+		makeAbs: filepath.Abs,
+	}
+}
+
+func (p *pathParser) Resolve(path string) (AbsPath, error) {
 	path = strings.TrimSpace(path) // (*)
 	if len(path) == 0 {
-		return AbsPath{},
-			errors.New("must be a non-empty, non-whitespace-only string")
+		return AbsPath{}, pathResolveWhitespaceErr()
 	}
-	if p, err := filepath.Abs(path); err != nil {
-		return AbsPath{}, err
+	if p, err := p.makeAbs(path); err != nil {
+		return AbsPath{}, pathResolveAbsErr(err)
 	} else {
 		return AbsPath{data: p}, nil
 	}
 
-	// (*) Abs doesn't trim space, e.g. Abs('/a/b ') == '/a/b '.
+	// (*) filepath.Abs doesn't trim space, e.g.
+	// filepath.Abs('/a/b ') == '/a/b '.
 }
 
+// Append the given relative path to this absolute path.
 func (d AbsPath) Join(relativePath string) AbsPath {
 	rest := strings.TrimSpace(relativePath) // (1)
 	return AbsPath{
@@ -51,12 +71,16 @@ func (d AbsPath) Join(relativePath string) AbsPath {
 	// - https://stackoverflow.com/questions/35231846
 }
 
+// Is this a path to a directory?
+// If there's an error accessing the file system return that error.
+// Otherwise return nil if the path points to a directory or a NotADirectory
+// error if it doesn't.
 func (d AbsPath) IsDir() error {
 	if f, err := os.Stat(d.Value()); err != nil {
 		return err
 	} else {
 		if !f.IsDir() {
-			return fmt.Errorf("not a directory: %v", d.Value())
+			return notADirErr(d)
 		}
 	}
 	return nil
@@ -71,7 +95,7 @@ func ListPaths(dirPath string) ([]string, []error) {
 	visitedPaths := []string{}
 	errs := []error{}
 
-	targetDir, err := ParseAbsPath(dirPath)
+	targetDir, err := NewAbsPathParser().Resolve(dirPath)
 	if err != nil {
 		errs = append(errs, err)
 		return visitedPaths, errs

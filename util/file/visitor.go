@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -39,21 +38,6 @@ type TreeScanner interface {
 	Visit(v Visitor) []error
 }
 
-// VisitError wraps any error that happened while traversing the target
-// directory with an additional path to indicate where the error happened.
-type VisitError struct {
-	AbsPath string
-	Err     error
-}
-
-// Error implements the standard error interface.
-func (e VisitError) Error() string {
-	return fmt.Sprintf("%s: %v", e.AbsPath, e.Err)
-}
-
-// Unwrap implements Go's customary error unwrapping.
-func (e VisitError) Unwrap() error { return e.Err }
-
 type scanner struct {
 	targetDir AbsPath
 }
@@ -69,8 +53,7 @@ func (s *scanner) Visit(v Visitor) []error {
 		filepath.Walk(s.targetDir.Value(), // (*)
 			s.visitAllAndCollectErrors(v, &es))
 	} else {
-		es = appendVisitError(s.targetDir.Value(), fmt.Errorf("nil visitor"),
-			es)
+		es = appendVisitError(s.targetDir.Value(), nilVisitorErr(), es)
 	}
 	return es
 

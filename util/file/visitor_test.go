@@ -18,7 +18,7 @@ func findTestDataDir(dirIndex int) AbsPath {
 	testDataDirName := fmt.Sprintf("test_%d", dirIndex)
 	testDataDir := filepath.Join(enclosingDir, "visitor_test_dir",
 		testDataDirName)
-	p, _ := ParseAbsPath(testDataDir)
+	p, _ := NewAbsPathParser().Resolve(testDataDir)
 
 	return p
 }

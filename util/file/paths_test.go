@@ -1,12 +1,15 @@
 package file
 
 import (
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+
+	e "github.com/c0c0n3/resto/util/err"
 )
 
 // TODO. The path tests will probably fail on Windows since we're using
@@ -33,7 +36,7 @@ var parsePathFixtures = []struct {
 
 func TestParsePath(t *testing.T) {
 	for k, d := range parsePathFixtures {
-		if p, err := ParseAbsPath(d.in); err != nil {
+		if p, err := NewAbsPathParser().Resolve(d.in); err != nil {
 			t.Errorf("[%d] want: valid parse; got: %v", k, err)
 		} else {
 			if !d.rel && d.want != p.Value() {
@@ -43,6 +46,19 @@ func TestParsePath(t *testing.T) {
 				t.Errorf("[%d] want suffix: %s; got: %s", k, d.want, p.Value())
 			}
 		}
+	}
+}
+
+func TestParsePathResolveErr(t *testing.T) {
+	parser := &pathParser{
+		makeAbs: func(path string) (string, error) {
+			return "", fmt.Errorf("foo")
+		},
+	}
+	_, err := parser.Resolve(".")
+
+	if _, ok := err.(e.Err[PathResolve]); !ok {
+		t.Errorf("want: resolve error; got: %v", err)
 	}
 }
 
@@ -57,7 +73,7 @@ var joinPathFixtures = []struct {
 
 func TestJoinPath(t *testing.T) {
 	for k, d := range joinPathFixtures {
-		if base, err := ParseAbsPath(d.base); err != nil {
+		if base, err := NewAbsPathParser().Resolve(d.base); err != nil {
 			t.Errorf("[%d] want: valid parse; got: %v", k, err)
 		} else {
 			joined := base.Join(d.rel)
@@ -69,7 +85,7 @@ func TestJoinPath(t *testing.T) {
 }
 
 func TestIsDir(t *testing.T) {
-	if pwd, err := ParseAbsPath("."); err != nil {
+	if pwd, err := NewAbsPathParser().Resolve("."); err != nil {
 		t.Errorf("want: valid parse; got: %v", err)
 	} else {
 		if err := pwd.IsDir(); err != nil {
@@ -77,8 +93,9 @@ func TestIsDir(t *testing.T) {
 		}
 
 		notThere := pwd.Join("notThere")
-		if err := notThere.IsDir(); err == nil {
-			t.Errorf("want: not a directory; got directory: %v", notThere)
+		err := notThere.IsDir()
+		if _, ok := err.(*fs.PathError); !ok {
+			t.Errorf("want: path error for: %v; got: %v", notThere, err)
 		}
 
 		if tempFile, err := ioutil.TempFile("", "prefix"); err != nil {
@@ -86,11 +103,12 @@ func TestIsDir(t *testing.T) {
 		} else {
 			defer os.Remove(tempFile.Name())
 
-			if tf, err := ParseAbsPath(tempFile.Name()); err != nil {
+			if tf, err := NewAbsPathParser().Resolve(tempFile.Name()); err != nil {
 				t.Errorf("want: valid temp file parse; got: %v", err)
 			} else {
-				if err := tf.IsDir(); err == nil {
-					t.Errorf("want: not a dir; got dir: %v", tf)
+				err := tf.IsDir()
+				if _, ok := err.(e.Err[NotADirectory]); !ok {
+					t.Errorf("want: not a dir err for: %v; got: %v", tf, err)
 				}
 			}
 		}
