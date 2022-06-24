@@ -3,7 +3,6 @@ package tgz
 import (
 	"archive/tar"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 
@@ -61,7 +60,7 @@ type tarball struct {
 func NewWriter(archiveBaseDirName string, sink io.WriteCloser,
 	opts ...WriterOption) (Writer, error) {
 	if sink == nil {
-		return nil, fmt.Errorf("nil sink")
+		return nil, nilSinkErr()
 	}
 
 	cfg := makeWriterCfg(archiveBaseDirName, opts...)

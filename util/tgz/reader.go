@@ -3,7 +3,6 @@ package tgz
 import (
 	"archive/tar"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 )
@@ -36,7 +35,7 @@ type rdr struct {
 // gzip-compressed tar archive.
 func NewReader(source io.ReadCloser) (Reader, error) {
 	if source == nil {
-		return nil, fmt.Errorf("nil source")
+		return nil, nilSourceErr()
 	}
 	deflateStream, err := gzip.NewReader(source)
 	if err != nil {
@@ -63,10 +62,10 @@ func (r *rdr) IterateEntries(process EntryReader) error {
 	defer r.Close()
 
 	if process == nil {
-		return fmt.Errorf("nil entry reader")
+		return nilEntryReaderErr()
 	}
 	if r.closed {
-		return fmt.Errorf("closed reader")
+		return closedReaderErr()
 	}
 
 	return r.forEachEntry(process)
