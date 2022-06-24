@@ -9,10 +9,10 @@ package tree
 // then the current node is a leaf.
 type Unfolder[X, S any] func(seed S) (X, []S)
 
-// Use the given tree data generator to build a Tree in depth-first order.
+// Use the given tree data generator to build a Tree in breadth-first order.
 // Example.
 //
-//     func sixNodeBinTree(seed int) (label string, nextSeeds []int) {
+//     func sevenNodeBinTree(seed int) (label string, nextSeeds []int) {
 //         label = fmt.Sprintf("%d", seed)
 //         if 2*seed+1 < 7 {
 //             nextSeeds = []int{2*seed + 1, 2*seed + 2}
@@ -21,7 +21,7 @@ type Unfolder[X, S any] func(seed S) (X, []S)
 //     }
 //
 //     func mkTree() Tree[string] {
-//         return Unfold(sixNodeBinTree, 0)
+//         return Unfold(sevenNodeBinTree, 0)
 //     }
 //
 //     mkTree() ~~>      0
