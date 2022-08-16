@@ -2,6 +2,7 @@ package bytez
 
 import (
 	"bytes"
+	"io"
 )
 
 // Buffer wraps a bytes.Buffer to implement io.ReadCloser and io.WriteCloser.
@@ -32,4 +33,19 @@ func (buf *Buffer) Close() error {
 // Bytes returns a slice holding the unread portion of the buffer.
 func (buf *Buffer) Bytes() []byte {
 	return buf.data.Bytes()
+}
+
+// NewBufferFrom returns a Buffer containing a copy of the input slice.
+func NewBufferFrom(p []byte) *Buffer {
+	buf := NewBuffer()
+	buf.Write(p)
+	return buf
+}
+
+// Reader returns an io.ReadCloser backed by the input slice. The returned
+// io.ReadCloser reads directly from the slice, there's no copying of the
+// input into a new buffer.
+func Reader(content []byte) io.ReadCloser {
+	buf := bytes.NewReader(content)
+	return io.NopCloser(buf)
 }

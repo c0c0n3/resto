@@ -82,3 +82,62 @@ func TestBytesAfterRead(t *testing.T) {
 		t.Errorf("want: %v; got: %v", want, got)
 	}
 }
+
+func TestNewBufferFromNil(t *testing.T) {
+	got := NewBufferFrom(nil)
+	if got == nil {
+		t.Fatalf("want: buffer; got: nil")
+	}
+
+	gotLen := len(got.Bytes())
+	if gotLen != 0 {
+		t.Errorf("want: 0; got: %d", gotLen)
+	}
+}
+
+func TestNewBufferCopy(t *testing.T) {
+	original := []byte{1}
+	got := NewBufferFrom(original)
+	if got == nil {
+		t.Fatalf("want: buffer; got: nil")
+	}
+
+	original[0] = 2
+	gotCopy := got.Bytes()[0]
+	if gotCopy != 1 {
+		t.Errorf("want: 1; got: %d", gotCopy)
+	}
+}
+
+func TestReaderFromNil(t *testing.T) {
+	got := Reader(nil)
+	if got == nil {
+		t.Fatalf("want: buffer; got: nil")
+	}
+
+	gotBuf, err := io.ReadAll(got)
+	if err != nil {
+		t.Fatalf("want: buffer; got: %v", err)
+	}
+	gotLen := len(gotBuf)
+	if gotLen != 0 {
+		t.Errorf("want: 0; got: %d", gotLen)
+	}
+}
+
+func TestReaderBufferSharing(t *testing.T) {
+	original := []byte{1}
+	got := Reader(original)
+	if got == nil {
+		t.Fatalf("want: buffer; got: nil")
+	}
+
+	original[0] = 2
+	gotBuf, err := io.ReadAll(got)
+	if err != nil {
+		t.Fatalf("want: buffer; got: %v", err)
+	}
+	if gotBuf[0] != 2 {
+		t.Errorf("want: 2; got: %d", gotBuf[0])
+	}
+}
