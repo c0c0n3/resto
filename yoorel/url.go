@@ -115,3 +115,13 @@ func (p httpUrl) WireFormat() string {
 	queryRepr := p.query.Encode()
 	return refRepr + "?" + queryRepr
 }
+
+// Convert an HttpUrl to a Go's standard lib URL.
+// Never return null, if an error happens just return an empty URL.
+func ToURL(data HttpUrl) *url.URL {
+	u := &url.URL{}
+	if data != nil {
+		u, _ = url.Parse(data.WireFormat())
+	}
+	return u
+}
