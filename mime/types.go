@@ -3,9 +3,11 @@ package mime
 type MediaType string
 
 const (
-	JSON = MediaType("application/json")
-	YAML = MediaType("application/yaml")
-	GZIP = MediaType("application/gzip")
+	GZIP         = MediaType("application/gzip")
+	JSON         = MediaType("application/json")
+	OCTET_STREAM = MediaType("application/octet-stream")
+	PLAIN_TEXT   = MediaType("text/plain")
+	YAML         = MediaType("application/yaml")
 )
 
 func (t MediaType) String() string {
