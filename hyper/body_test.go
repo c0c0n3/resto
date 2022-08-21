@@ -61,8 +61,7 @@ func TestWriteStringBody(t *testing.T) {
 }
 
 var readStringBodyFixtures = []string{
-	// "", "1", "12345678",
-	"1",
+	"", "1", "12345678",
 }
 
 func TestReadStringBody(t *testing.T) {
