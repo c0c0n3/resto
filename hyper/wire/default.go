@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/c0c0n3/resto/util/bytez"
 	"github.com/c0c0n3/resto/yoorel"
 )
 
@@ -62,6 +63,9 @@ func (p *resReader) Headers() map[string][]string {
 }
 
 func (p *resReader) Body() io.ReadCloser {
+	if p.res.Body == nil {
+		return bytez.NewBuffer()
+	}
 	return p.res.Body
 }
 

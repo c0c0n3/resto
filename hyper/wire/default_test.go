@@ -165,3 +165,19 @@ func TestRequestBuilderFail(t *testing.T) {
 		t.Errorf("want: boom!; got: %s", got)
 	}
 }
+
+func TestResReaderEmptyOnNilBody(t *testing.T) {
+	reader := resReader{&http.Response{}}
+	body := reader.Body()
+
+	if body == nil {
+		t.Errorf("want: empty body; got: nil")
+	}
+	buf, err := io.ReadAll(body)
+	if err != nil {
+		t.Errorf("want: empty body; got: %v", err)
+	}
+	if len(buf) > 0 {
+		t.Errorf("want: empty body; got: %v", buf)
+	}
+}
