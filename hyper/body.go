@@ -1,7 +1,6 @@
 package hyper
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 
@@ -9,98 +8,85 @@ import (
 	"github.com/c0c0n3/resto/util/bytez"
 )
 
-// BodyContent represents some data structure to be written (read) to
-// (from) an HTTP message body. The WriteBody (ReadBody) function takes
-// care of converting the data to (from) a sequence of HTTP body octets.
-type BodyContent interface {
-	[]byte | string | JSON
+// BodyTransfer says if the body content should be streamed.
+type BodyTransfer interface {
+	// Return true if the body content should be streamed, false otherwise.
+	Streaming() bool
 }
 
-func bodyContentToReader[T BodyContent](data T) (
-	reader io.ReadCloser, size int, err error) {
-	switch target := any(data).(type) {
-	case []byte:
-		size = len(target)
-		reader = bytez.Reader(target)
-	case string:
-		buf := []byte(target)
-		size = len(buf)
-		reader = bytez.Reader(buf)
-	case JSON:
-		reader, size, err = target.serialize()
-	}
-	return reader, size, err
+// BodySerializer turns data into an HTTP body octet sequence.
+type BodySerializer interface {
+	BodyTransfer
+	// Serialize turns the data it holds into an HTTP body octet sequence.
+	// The returned io.ReadCloser hods the octets whereas the integer output
+	// counts them---i.e. it's the body size. The body size will be ignored
+	// in the case of a streaming body.
+	Serialize() (body io.ReadCloser, bodySize int, err error)
 }
 
-/*
-TODO why this function can't compile?
-Getting IncompatibleAssign errors, e.g. for the []byte case
-
-    cannot use io.ReadAll(data) (value of type []byte) as T value
-	in assignment: cannot assign []byte to string (in T)
-
-func bodyContentFromReader[T BodyContent](data io.ReadCloser) (out T, err error) {
-	switch any(out).(type) {
-	case []byte:
-		out, err = io.ReadAll(data)
-	case string:
-		buf, err := io.ReadAll(data)
-		out = string(buf)
-	case JSON:
-		err = out.deserialize(data)
-	}
-	return out, err
+// BodyDeserializer reads an HTTP body octet sequence into some data
+// structure or stream.
+type BodyDeserializer interface {
+	BodyTransfer
+	// Deserialize reads the given HTTP body octets into its own data
+	// structure. Deserialize doesn't close the body stream, the caller
+	// is responsible for that.
+	Deserialize(body io.ReadCloser) error
 }
-
-If this, or something similar, worked then we could have a single
-
-    func ReadBody[T BodyContent](msg wire.MessageReader, output *T) error
-
-instead of the many Read* ones we've got at the moment.
-*/
 
 // Write a message body with the given content.
-// Also write a "Content-Length" header with the size of the content.
-func WriteBody[T BodyContent](msg wire.MessageWriter, content T) error {
-	contentReader, bodySize, err := bodyContentToReader(content)
+// Also write a "Content-Length" header with the size of the content
+// if the content objects knows upfront how many bytes it'll write to
+// the body---i.e. non-streaming content.
+func WriteBody(msg wire.MessageWriter, content BodySerializer) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
+	if content == nil {
+		return NilBodySerializerErr()
+	}
+
+	contentReader, bodySize, err := content.Serialize()
 	if err != nil {
 		return err
 	}
-	if err := WriteContentLength(msg, uint64(bodySize)); err != nil {
-		return err
+	if !content.Streaming() {
+		if err := WriteContentLength(msg, uint64(bodySize)); err != nil {
+			return err
+		}
 	}
 	return msg.Body(contentReader)
 }
 
-// TODO also implement streaming body? most of the standard libs aren't built
-// w/ streaming in mind, so in practice you'll likely have the whole body in
-// memory most of the time for common cases---e.g. JSON, YAML.
-
-// Deserialise a JSON message body into the given output data structure.
-func ReadJsonBody[T any](msg wire.MessageReader, output *T) error {
-	if output == nil {
-		return NilJsonOutDataErr()
-	}
-	out := JSON{output}
-	return out.deserialize(msg.Body())
-}
-
 // Read the message body into the given buffer.
-func ReadBody(msg wire.MessageReader, output *bytes.Buffer) error {
-	if output == nil {
-		return NilBytesBufferErr()
+func ReadBody(msg wire.MessageReader, content BodyDeserializer) error {
+	if msg == nil {
+		return NilMessageWriterErr()
 	}
-	_, err := io.Copy(output, msg.Body())
-	return err
+	if content == nil {
+		return NilBodyDeserializerErr()
+	}
+	return content.Deserialize(msg.Body())
 }
 
-// JSON holds a data structure that needs to be (de-)serialized (from)
-// to an HTTP body octet stream containing JSON data.
-type JSON struct {
+func ensureReader(r io.ReadCloser) io.ReadCloser {
+	if r == nil {
+		return bytez.NewBuffer()
+	}
+	return r
+}
+
+// JsonBody holds a data structure that needs to be (de-)serialized
+// (from) to an HTTP body octet stream containing JSON data.
+type JsonBody struct {
 	Data any
 }
 
-func (p JSON) serialize() (io.ReadCloser, int, error) {
+func (p *JsonBody) Streaming() bool {
+	return false
+}
+
+func (p *JsonBody) Serialize() (io.ReadCloser, int, error) {
 	// var json = jsoniter.ConfigCompatibleWithStandardLibrary // (*)
 	buf, err := json.Marshal(p.Data)
 	return bytez.NewBufferFrom(buf), len(buf), err
@@ -128,19 +114,81 @@ func (p JSON) serialize() (io.ReadCloser, int, error) {
 	// - https://stackoverflow.com/questions/35377477
 }
 
-func (p JSON) deserialize(reader io.ReadCloser) error {
+func (p *JsonBody) Deserialize(reader io.ReadCloser) error {
 	// var json = jsoniter.ConfigCompatibleWithStandardLibrary // (*)
-	decoder := json.NewDecoder(reader)
+	decoder := json.NewDecoder(ensureReader(reader))
 	return decoder.Decode(p.Data)
 
 	// (*) json-iterator lib.
-	// We could use it in serialize() to work around encoding/json's
+	// We could use it in Serialize() to work around encoding/json's
 	// inability to serialise map[interface {}]interface{} types. Here
 	// we're parsing JSON into a data structure and AFAICT the built-in
 	// json lib can parse pretty much any valid JSON you throw at it.
 	// So the only reason to use json-iterator in place of encoding/json
 	// would be performance: json-iterator is way faster than encoding/json.
 	// But ideally resto shouldn't depend on external libs...
-	// TODO if we switch to json-iterator in serialize(), then use
+	// TODO if we switch to json-iterator in Serialize(), then use
 	// json-iterator here too.
+}
+
+// StringBody holds a string that needs to be (de-)serialized (from) to
+// an HTTP body octet stream containing text.
+type StringBody struct {
+	Data string
+}
+
+func (p *StringBody) Streaming() bool {
+	return false
+}
+
+func (p *StringBody) Serialize() (io.ReadCloser, int, error) {
+	buf := []byte(p.Data)
+	return bytez.Reader(buf), len(buf), nil
+}
+
+func (p *StringBody) Deserialize(reader io.ReadCloser) error {
+	buf := bytez.NewBuffer()
+	_, err := io.Copy(buf, ensureReader(reader))
+	p.Data = string(buf.Bytes())
+	return err
+}
+
+// ByteBody holds a byte slice that needs to be written/read to/from
+// an HTTP body octet stream.
+type ByteBody struct {
+	Data []byte
+}
+
+func (p *ByteBody) Streaming() bool {
+	return false
+}
+
+func (p *ByteBody) Serialize() (io.ReadCloser, int, error) {
+	return bytez.Reader(p.Data), len(p.Data), nil
+}
+
+func (p *ByteBody) Deserialize(reader io.ReadCloser) error {
+	buf := bytez.NewBuffer()
+	_, err := io.Copy(buf, ensureReader(reader))
+	p.Data = buf.Bytes()
+	return err
+}
+
+// StreamingBody produces/consumes an HTTP body octet stream in constant
+// space.
+type StreamingBody struct {
+	Data io.ReadCloser
+}
+
+func (p *StreamingBody) Streaming() bool {
+	return true
+}
+
+func (p *StreamingBody) Serialize() (io.ReadCloser, int, error) {
+	return p.Data, 0, nil
+}
+
+func (p *StreamingBody) Deserialize(reader io.ReadCloser) error {
+	p.Data = ensureReader(reader)
+	return nil
 }

@@ -68,13 +68,15 @@ func (p *msgWriter) assertNoBody() {
 }
 
 type msgReader struct {
-	headers map[string]string
-	body    string
+	headers       map[string]string
+	body          string
+	returnNilBody bool
 }
 
 func newMsgReader() *msgReader {
 	return &msgReader{
-		headers: make(map[string]string, 0),
+		headers:       make(map[string]string, 0),
+		returnNilBody: false,
 	}
 }
 
@@ -90,6 +92,34 @@ func (p *msgReader) Headers() map[string][]string {
 }
 
 func (p *msgReader) Body() io.ReadCloser {
+	if p.returnNilBody {
+		return nil
+	}
 	buf := []byte(p.body)
 	return bytez.NewBufferFrom(buf)
+}
+
+type byteStreamer struct {
+	dataToStream []byte
+	streamed     int
+}
+
+func newByteStreamer(content []byte) *byteStreamer {
+	return &byteStreamer{
+		dataToStream: content,
+		streamed:     0,
+	}
+}
+
+func (p *byteStreamer) Read(buf []byte) (n int, err error) {
+	if len(p.dataToStream) == p.streamed {
+		return 0, io.EOF
+	}
+	buf[0] = p.dataToStream[p.streamed]
+	p.streamed = p.streamed + 1
+	return 1, nil
+}
+
+func (p *byteStreamer) Close() error {
+	return nil
 }

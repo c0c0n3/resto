@@ -7,6 +7,18 @@ import (
 // A nil pointer error.
 type NilPtr string
 
+func NilMessageWriterErr() err.Err[NilPtr] {
+	return err.Mk[NilPtr]("nil MessageWriter")
+}
+
+func NilBodySerializerErr() err.Err[NilPtr] {
+	return err.Mk[NilPtr]("nil BodySerializer")
+}
+
+func NilBodyDeserializerErr() err.Err[NilPtr] {
+	return err.Mk[NilPtr]("nil BodyDeserializer")
+}
+
 func NilRequestBuilderErr() err.Err[NilPtr] {
 	return err.Mk[NilPtr]("nil RequestBuilder")
 }
@@ -17,14 +29,6 @@ func NilResponseHandlerErr() err.Err[NilPtr] {
 
 func NilBearerTokenProviderErr() err.Err[NilPtr] {
 	return err.Mk[NilPtr]("nil BearerTokenProvider")
-}
-
-func NilJsonOutDataErr() err.Err[NilPtr] {
-	return err.Mk[NilPtr]("nil JSON output data structure")
-}
-
-func NilBytesBufferErr() err.Err[NilPtr] {
-	return err.Mk[NilPtr]("nil bytes.Buffer")
 }
 
 // An unexpected server response.

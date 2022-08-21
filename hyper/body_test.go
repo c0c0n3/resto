@@ -1,45 +1,117 @@
 package hyper
 
 import (
-	"bytes"
 	"encoding/json"
+	"io"
 	"reflect"
 	"testing"
 
 	e "github.com/c0c0n3/resto/util/err"
 )
 
-func TestWriteBodyBytes(t *testing.T) {
-	msg := newMsgWriter(t)
-	want := []byte{4, 2}
-	WriteBody(msg, want)
+var writeBodyBytesFixtures = [][]byte{
+	{}, {4}, {4, 2},
+}
 
-	got := msg.body
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("want: %v; got: %v", want, got)
+func TestWriteBodyBytes(t *testing.T) {
+	for _, want := range writeBodyBytesFixtures {
+		msg := newMsgWriter(t)
+		WriteBody(msg, &ByteBody{want})
+
+		got := msg.body
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("want: %v; got: %v", want, got)
+		}
 	}
+}
+
+var readBodyBytesFixtures = []string{
+	"", "1", "12345678",
+}
+
+func TestReadBodyBytes(t *testing.T) {
+	for _, want := range readBodyBytesFixtures {
+		msg := newMsgReader()
+		msg.body = want
+		output := &ByteBody{}
+		ReadBody(msg, output)
+
+		got := string(output.Data)
+		if want != got {
+			t.Errorf("want: %s; got: %s", want, got)
+		}
+	}
+}
+
+var writeStringBodyFixtures = []string{
+	"", "4", "42", "wada wada",
 }
 
 func TestWriteStringBody(t *testing.T) {
-	msg := newMsgWriter(t)
-	WriteBody(msg, "42")
+	for _, want := range writeStringBodyFixtures {
+		msg := newMsgWriter(t)
+		WriteBody(msg, &StringBody{want})
 
-	want := []byte("42")
-	got := msg.body
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("want: %v; got: %v", want, got)
+		wantBytes := []byte(want)
+		got := msg.body
+		if !reflect.DeepEqual(wantBytes, got) {
+			t.Errorf("want: %v; got: %v", wantBytes, got)
+		}
 	}
 }
 
-func TestWriteBodyContentLengthError(t *testing.T) {
-	msg := newMsgWriter(t)
-	msg.headerWritingErr = UnexpectedResponseErr("boom")
-	err := WriteBody(msg, "42")
+var readStringBodyFixtures = []string{
+	// "", "1", "12345678",
+	"1",
+}
 
-	if _, ok := err.(e.Err[UnexpectedResponse]); !ok {
-		t.Errorf("want: unexpected response err; got: %v", err)
+func TestReadStringBody(t *testing.T) {
+	for _, want := range readStringBodyFixtures {
+		msg := newMsgReader()
+		msg.body = want
+		output := &StringBody{}
+		ReadBody(msg, output)
+
+		got := output.Data
+		if want != got {
+			t.Errorf("want: %s; got: %s", want, got)
+		}
 	}
-	msg.assertNoBody()
+}
+
+var writeStreamingBodyFixtures = [][]byte{
+	{}, {1}, {1, 2, 3, 4, 5, 6, 7, 8},
+}
+
+func TestWriteStreamingBody(t *testing.T) {
+	for _, want := range writeStreamingBodyFixtures {
+		msg := newMsgWriter(t)
+		WriteBody(msg, &StreamingBody{newByteStreamer(want)})
+
+		got := msg.body
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("want: %v; got: %v", want, got)
+		}
+	}
+}
+
+var readStreamingBodyFixtures = []string{
+	"", "1", "12345678",
+}
+
+func TestReadStreamingBody(t *testing.T) {
+	for _, want := range readStreamingBodyFixtures {
+		msg := newMsgReader()
+		msg.body = want
+		output := &StreamingBody{}
+		ReadBody(msg, output)
+
+		gotBytes, _ := io.ReadAll(output.Data)
+		got := string(gotBytes)
+		if want != got {
+			t.Errorf("want: %s; got: %s", want, got)
+		}
+	}
 }
 
 type MyData struct{ Greeting string }
@@ -49,7 +121,7 @@ type Unknown struct {
 
 func TestWriteJsonBody(t *testing.T) {
 	msg := newMsgWriter(t)
-	greeting := JSON{Data: &MyData{"howzit!"}}
+	greeting := &JsonBody{&MyData{"howzit!"}}
 	WriteBody(msg, greeting)
 
 	want := `{"Greeting":"howzit!"}`
@@ -61,7 +133,7 @@ func TestWriteJsonBody(t *testing.T) {
 
 func TestWriteNilJsonBody(t *testing.T) {
 	msg := newMsgWriter(t)
-	noData := JSON{Data: nil}
+	noData := &JsonBody{Data: nil}
 	WriteBody(msg, noData)
 
 	want := `null`
@@ -73,7 +145,7 @@ func TestWriteNilJsonBody(t *testing.T) {
 
 func TestWriteBodyJsonMarshalError(t *testing.T) {
 	msg := newMsgWriter(t)
-	notSerializable := JSON{Data: func() {}}
+	notSerializable := &JsonBody{Data: func() {}}
 	err := WriteBody(msg, notSerializable)
 
 	if _, ok := err.(*json.UnsupportedTypeError); !ok {
@@ -86,7 +158,7 @@ func TestWriteUntypedJsonBody(t *testing.T) {
 	msg := newMsgWriter(t)
 	x := make(map[interface{}]interface{})
 	x[1] = 2
-	unknown := JSON{Data: &Unknown{X: x}}
+	unknown := &JsonBody{Data: &Unknown{X: x}}
 	err := WriteBody(msg, unknown)
 
 	if _, ok := err.(*json.UnsupportedTypeError); !ok {
@@ -99,7 +171,7 @@ func TestReadJsonBody(t *testing.T) {
 	msg := newMsgReader()
 	msg.body = `{"Greeting":"howzit!"}`
 	output := &MyData{}
-	ReadJsonBody(msg, output)
+	ReadBody(msg, &JsonBody{output})
 
 	if output.Greeting != "howzit!" {
 		t.Errorf("want: howzit!; got: %v", output)
@@ -110,7 +182,7 @@ func TestReadNilJsonBody(t *testing.T) {
 	msg := newMsgReader()
 	msg.body = `null`
 	output := &MyData{}
-	err := ReadJsonBody(msg, output)
+	err := ReadBody(msg, &JsonBody{output})
 
 	if err != nil {
 		t.Errorf("want: empty read; got: %v", err)
@@ -120,37 +192,62 @@ func TestReadNilJsonBody(t *testing.T) {
 	}
 }
 
-func TestReadJsonBodyNilOutputPtrError(t *testing.T) {
+func TestWriteBodyContentLengthError(t *testing.T) {
+	msg := newMsgWriter(t)
+	msg.headerWritingErr = UnexpectedResponseErr("boom")
+	err := WriteBody(msg, &StringBody{"42"})
+
+	if _, ok := err.(e.Err[UnexpectedResponse]); !ok {
+		t.Errorf("want: unexpected response err; got: %v", err)
+	}
+	msg.assertNoBody()
+}
+
+func TestWriteBodyNilWriterError(t *testing.T) {
+	err := WriteBody(nil, &StringBody{"42"})
+
+	if _, ok := err.(e.Err[NilPtr]); !ok {
+		t.Errorf("want: nil ptr err; got: %v", err)
+	}
+}
+
+func TestWriteBodyNilSerializerError(t *testing.T) {
+	msg := newMsgWriter(t)
+	err := WriteBody(msg, nil)
+
+	if _, ok := err.(e.Err[NilPtr]); !ok {
+		t.Errorf("want: nil ptr err; got: %v", err)
+	}
+}
+
+func TestReadBodyWithNilReaderError(t *testing.T) {
+	err := ReadBody(nil, &StringBody{})
+
+	if _, ok := err.(e.Err[NilPtr]); !ok {
+		t.Errorf("want: nil ptr err; got: %v", err)
+	}
+}
+
+func TestReadBodyWithNilDeserializerError(t *testing.T) {
 	msg := newMsgReader()
 	msg.body = `{"Greeting":"howzit!"}`
-	var output *MyData = nil
-	err := ReadJsonBody(msg, output)
+	err := ReadBody(msg, nil)
 
 	if _, ok := err.(e.Err[NilPtr]); !ok {
 		t.Errorf("want: nil ptr err; got: %v", err)
 	}
 }
 
-func TestReadBodyBuffer(t *testing.T) {
+func TestReadBodyEmptyReadOnNilMessageBody(t *testing.T) {
 	msg := newMsgReader()
-	want := "wada wada"
-	msg.body = want
-	var output bytes.Buffer
-	ReadBody(msg, &output)
-
-	got := output.String()
-	if got != want {
-		t.Errorf("want: %s; got: %s", want, got)
-	}
-}
-
-func TestReadBodyNilOutputPtrError(t *testing.T) {
-	msg := newMsgReader()
-	msg.body = "wada wada"
-	var output *bytes.Buffer
+	msg.returnNilBody = true
+	output := &ByteBody{}
 	err := ReadBody(msg, output)
 
-	if _, ok := err.(e.Err[NilPtr]); !ok {
-		t.Errorf("want: nil ptr err; got: %v", err)
+	if err != nil {
+		t.Errorf("want: empty read; got: %v", err)
+	}
+	if len(output.Data) > 0 {
+		t.Errorf("want: empty read; got: %v", output)
 	}
 }
