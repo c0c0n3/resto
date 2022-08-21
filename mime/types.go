@@ -7,6 +7,7 @@ const (
 	JSON         = MediaType("application/json")
 	OCTET_STREAM = MediaType("application/octet-stream")
 	PLAIN_TEXT   = MediaType("text/plain")
+	URL_ENCODED  = MediaType("application/x-www-form-urlencoded")
 	YAML         = MediaType("application/yaml")
 )
 

@@ -7,7 +7,9 @@ import (
 	"github.com/c0c0n3/resto/util/set"
 )
 
-var allTypes = []MediaType{GZIP, JSON, OCTET_STREAM, PLAIN_TEXT, YAML}
+var allTypes = []MediaType{
+	GZIP, JSON, OCTET_STREAM, PLAIN_TEXT, URL_ENCODED, YAML,
+}
 
 func TestDistinctMediaTypes(t *testing.T) {
 	allStrRepr := set.FromList(list.Map(MediaType.String, allTypes))
