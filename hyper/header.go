@@ -10,18 +10,27 @@ import (
 
 // Write a "Content-Type" header with the specified MIME type.
 func WriteContentType(msg wire.MessageWriter, mediaType mime.MediaType) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
 	return msg.Header("Content-Type", mediaType.String())
 	// TODO implement charset & friends?
 }
 
 // Write a "Content-Length" header with the specified body size.
 func WriteContentLength(msg wire.MessageWriter, bodySize uint64) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
 	sz := fmt.Sprintf("%d", bodySize)
 	return msg.Header("Content-Length", sz)
 }
 
 // Write an "Accept" header with the specified MIME types.
 func WriteAccept(msg wire.MessageWriter, mediaType ...mime.MediaType) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
 	ts := []string{}
 	for _, mt := range mediaType {
 		ts = append(ts, mt.String())
@@ -35,6 +44,9 @@ func WriteAccept(msg wire.MessageWriter, mediaType ...mime.MediaType) error {
 
 // Write an "Authorization" header with the specified value.
 func WriteAuthorization(msg wire.MessageWriter, value string) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
 	return msg.Header("Authorization", value)
 }
 
@@ -45,6 +57,9 @@ type BearerTokenProvider func() (string, error)
 // Write an "Authorization" header with a value of "Bearer t" where `t`
 // is the token value returned by the given BearerTokenProvider.
 func WriteBearerToken(msg wire.MessageWriter, acquireToken BearerTokenProvider) error {
+	if msg == nil {
+		return NilMessageWriterErr()
+	}
 	if acquireToken == nil {
 		return NilBearerTokenProviderErr()
 	}
