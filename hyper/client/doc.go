@@ -68,7 +68,7 @@ Similarly, the returned Response lets you build a response processing
 pipeline out of wire.ResponseHandler functions. You do that by calling
 the Response.Handle method as in the example below
 
-	output := &hyper.ByteBody{}           // read the body in a byte slice
+    output := &hyper.ByteBody{}           // read the body in a byte slice
     err := response.Handle(
         ExpectStatusCodeOneOf(200, 201),  // fail if status not 200 or 201
         ReadResponse(output),             // otherwise read in the body
@@ -103,7 +103,7 @@ all the response headers to stdout
 
 and you can easily slot it in
 
-	output := &hyper.ByteBody{}
+    output := &hyper.ByteBody{}
     err := response.Handle(
         PrintHeaders,
         ExpectStatusCodeOneOf(200, 201),
