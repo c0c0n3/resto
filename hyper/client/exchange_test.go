@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"net/http"
 	"net/url"
 	"testing"
@@ -170,6 +171,41 @@ func TestPostStream(t *testing.T) {
 	reqLen := mock.capturedReq.Header.Get("Content-Length")
 	if reqLen != "" {
 		t.Errorf("want: no len; got: %s", reqLen)
+	}
+}
+
+type EmptyBody struct {
+	bytes.Buffer
+	closed bool
+}
+
+func (e *EmptyBody) Close() error {
+	e.closed = true
+	return nil
+}
+
+func TestResponseHandleClosesBody(t *testing.T) {
+	responseBody := &EmptyBody{}
+	mock := &mockClient{
+		resToSend: &http.Response{
+			StatusCode: 200,
+			Status:     "OK",
+			Body:       responseBody,
+		},
+	}
+	client := New(mock.Sender())
+
+	err := client.Request(
+		GET("https://my.api/data"),
+	).Handle(
+		ExpectSuccess,
+	)
+
+	if err != nil {
+		t.Errorf("want: server reply; got: %v", err)
+	}
+	if !responseBody.closed {
+		t.Errorf("didn't close body stream on exit")
 	}
 }
 
