@@ -47,6 +47,21 @@ func postRequest(req RequestWriter) error {
 	return req.Body(content)
 }
 
+func postRequestWithContentLen(req RequestWriter) error {
+	url := yoorel.EmptyBuilder().Https().HostAndPort("httpbin.org").
+		JoinPath("/post").Build().Right()
+	err := req.RequestLine(POST, url)
+	if err != nil {
+		return err
+	}
+	err = req.Header("Content-Length", "5")
+	if err != nil {
+		return err
+	}
+	content := bytez.Reader([]byte{1, 2, 3, 4, 5})
+	return req.Body(content)
+}
+
 func bogusRequest(req RequestWriter) error {
 	url := yoorel.EmptyBuilder().Https().HostAndPort("httpbin.org").
 		JoinPath("/get").Build().Right()
@@ -102,6 +117,25 @@ func TestSuccessfulRequestReplyExchange(t *testing.T) {
 		if string(body) != wantBodyContent {
 			t.Errorf("want: %s; got: %s", wantBodyContent, string(body))
 		}
+	}
+}
+
+func TestSetContentLengthWhenPresent(t *testing.T) {
+	mock := &echoMock{}
+	send := NewSender(mock.send)
+	response, err := send(postRequestWithContentLen)
+	request := mock.capturedRequest
+	wantCode := StatusCode(200)
+
+	if err != nil {
+		t.Fatalf("want: response; got: %v", err)
+	}
+	code, _ := response.StatusLine()
+	if code != wantCode {
+		t.Errorf("want: %v; got: %v", wantCode, code)
+	}
+	if request.ContentLength != 5 {
+		t.Errorf("want: 5; got: %d", request.ContentLength)
 	}
 }
 

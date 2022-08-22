@@ -3,6 +3,7 @@ package wire
 import (
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/c0c0n3/resto/util/bytez"
 	"github.com/c0c0n3/resto/yoorel"
@@ -109,6 +110,25 @@ func getStdLibRequestSender[T StdLibClient](client ...T) StdLibSender {
 	return http.DefaultClient.Do
 }
 
+func setRequestLength(req *http.Request) {
+	length := req.Header.Get("Content-Length")
+	if length != "" {
+		if value, err := strconv.ParseInt(length, 10, 64); err == nil {
+			req.ContentLength = value
+		}
+	}
+	// NOTE. Hack. The http package ignores the "Content-Length" header.
+	// So if you have a "Content-Length" header set to the right value
+	// but you don't explicitly set req.ContentLength to that value, the
+	// client will look at req.ContentLength, see a 0 and think the body
+	// size can't be determined, so it'll stream the content, setting a
+	// "Transfer-Encoding: chunked" header.
+	// The reason is this type switch
+	// - https://cs.opensource.google/go/go/+/refs/tags/go1.18.2:src/net/http/request.go;l=890
+	// which can't possibly be good for us since we'll only ever use an
+	// io.ReadCloser for body type.
+}
+
 func sendRequest(build RequestBuilder, send StdLibSender) (ResponseReader, error) {
 	buf := emptyReqBuf()
 	if err := build(buf); err != nil {
@@ -118,6 +138,8 @@ func sendRequest(build RequestBuilder, send StdLibSender) (ResponseReader, error
 	if err != nil {
 		return nil, err
 	}
+	setRequestLength(request)
+
 	response, err := send(request)
 	if err != nil {
 		return nil, err
